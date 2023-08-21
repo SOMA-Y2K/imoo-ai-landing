@@ -7,6 +7,8 @@ import requests
 import os
 import io
 
+from main import run_main_script
+
 app = Flask(__name__)
 api = Api(app)
 app.config['DEBUG'] = True
@@ -47,10 +49,27 @@ def upload_image():
                 # module for virtual fitting clothes
                 # 4 output images will be made 
                 #image.save(filename)
-                pil_image = Image.open(io.BytesIO(image_data))
-                
+
+                input_filename = "./VITON-HD/test_pairs_unpaired_1018.txt"
+                output_lines = [f"00888_00.png {image.filename} upper",
+                                f"00920_00.png {image.filename} upper",
+                                f"01767_00.png {image.filename} upper",
+                                f"01839_00.png {image.filename} upper",
+                                f"02636_00.png {image.filename} upper",
+                                f"03178_00.png {image.filename} upper",
+                                f"03884_00.png {image.filename} upper",
+                                f"04071_00.png {image.filename} upper"]
+                                
+                with open(input_filename, "w") as output_file:
+                    for line in output_lines :
+                        output_file.write(f"{line}\n")
+        
+                folder_name = os.path.splitext(image.filename)[0]
+                run_main_script(folder_name)
+
+
       
-                output_images = [pil_image.copy() for _ in range(4)]
+                output_images = []
                 output_filenames = []
               
                 
@@ -65,20 +84,28 @@ def upload_image():
                         
                 zip_buffer = io.BytesIO()
                 with zipfile.ZipFile(zip_buffer, 'w') as zip_archive:
-                    for i, output_img in enumerate(output_images):
+                    sample_directory = f"sample/{folder_name}"
+                    for root, dirs, files in os.walk(sample_directory):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            # Add each file to the zip archive
+                            zip_archive.write(file_path, os.path.relpath(file_path, sample_directory))
+
+
+                    # for i, output_img in enumerate(output_images):
                         
-                        #print(f"Image {i}: Size = {output_img.size}, Mode = {output_img.mode}")
-                        output_filename = f'output_{i}.png'
+                    #     #print(f"Image {i}: Size = {output_img.size}, Mode = {output_img.mode}")
+                    #     output_filename = f'output_{i}.png'
                         
-                        output_img.save(output_filename, format='png')
-                        print(output_img)
-                        output_filenames.append(output_filename)
-                        zip_archive.write(output_filename)
+                    #     output_img.save(output_filename, format='png')
+                    #     print(output_img)
+                    #     output_filenames.append(output_filename)
+                    #     zip_archive.write(output_filename)
         
                
                 zip_buffer.seek(0)
-                #for output_filename in output_filenames:
-                #    os.remove(output_filename)
+                for output_filename in output_filenames:
+                    os.remove(output_filename)
                 print(zip_buffer)
                 return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name='output_images.zip')
        
@@ -90,5 +117,5 @@ def upload_image():
          return jsonify({"error": str(e)})
 
 if __name__ == '__main__' :
-    app.run(debug =True)
+    app.run(debug =True, host='0.0.0.0')
 
